@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PaperHand Checker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 32px;
+            margin-bottom: 40px;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .input-group {
+            margin-bottom: 30px;
+        }
+
+        .address-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            font-family: 'Courier New', monospace;
+            background: #111;
+            color: #fff;
+            border: 2px solid #333;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            transition: border-color 0.3s;
+        }
+
+        .address-input:focus {
+            outline: none;
+            border-color: #666;
+        }
+
+        .analyze-btn {
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 15px 40px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .analyze-btn:hover {
+            background: #ccc;
+        }
+
+        .analyze-btn:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            margin-top: 20px;
+            font-size: 18px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .result-container {
+            display: none;
+            margin-top: 40px;
+        }
+
+        .result-container.show {
+            display: block;
+        }
+
+        .stats-image {
+            max-width: 100%;
+            border: 2px solid #333;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .footer {
+            font-size: 12px;
+            color: #666;
+            margin-top: 20px;
+        }
+
+        .footer a {
+            color: #888;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            color: #aaa;
+        }
+
+        .error {
+            display: none;
+            color: #ff4444;
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ff4444;
+            border-radius: 8px;
+            background: #1a0a0a;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .buttons-container {
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+        }
+
+        .action-btn:hover {
+            background: #ccc;
+            transform: translateY(-2px);
+        }
+
+        .action-btn:active {
+            transform: translateY(0px);
+        }
+
+        .action-btn:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title"> PaperHand Checker 💀</h1>
+
+        <div class="input-group">
+            <input
+                type="text"
+                id="addressInput"
+                class="address-input"
+                placeholder="0x..."
+                maxlength="42"
+            />
+            <br>
+            <button id="analyzeBtn" class="analyze-btn">CHECK</button>
+        </div>
+
+        <div id="loading" class="loading">
+            Analyzing trades... 📊(20-30sec)
+        </div>
+
+        <div id="error" class="error"></div>
+
+        <div id="resultContainer" class="result-container">
+            <img id="statsImage" class="stats-image" alt="Paperhand Analysis" />
+
+            <div class="buttons-container">
+                <button id="downloadBtn" class="action-btn" style="display: none;">
+                    📥 Download Image
+                </button>
+                <button id="copyBtn" class="action-btn" style="display: none;">
+                    📋 Copy Image
+                </button>
+            </div>
+
+            <div class="footer">
+                <span style="text-align: center; display: block;">
+                    <a href="https://x.com/polylerts" target="_blank">@polylerts</a>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('analyzeBtn').addEventListener('click', analyzeAddress);
+        document.getElementById('addressInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                analyzeAddress();
+            }
+        });
+
+        function validateAddress(address) {
+            return /^0x[a-fA-F0-9]{40}$/.test(address);
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+
+            setTimeout(() => {
+                errorDiv.classList.remove('show');
+            }, 5000);
+        }
+
+        async function analyzeAddress() {
+            const address = document.getElementById('addressInput').value.trim();
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const loading = document.getElementById('loading');
+            const resultContainer = document.getElementById('resultContainer');
+            const error = document.getElementById('error');
+
+            // Validation
+            if (!address) {
+                showError('Please enter an Ethereum address');
+                return;
+            }
+
+            if (!validateAddress(address)) {
+                showError('Invalid Ethereum address format');
+                return;
+            }
+
+            // UI states
+            analyzeBtn.disabled = true;
+            loading.classList.add('show');
+            resultContainer.classList.remove('show');
+            error.classList.remove('show');
+
+            try {
+                // Call backend API to analyze
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ address: address })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Analysis failed');
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Show result image
+                    const statsImage = document.getElementById('statsImage');
+                    const downloadBtn = document.getElementById('downloadBtn');
+                    const copyBtn = document.getElementById('copyBtn');
+
+                    statsImage.src = result.image_url;
+
+                    // Show buttons
+                    downloadBtn.style.display = 'inline-block';
+                    copyBtn.style.display = 'inline-block';
+
+                    // Add download functionality
+                    downloadBtn.onclick = function() {
+                        downloadImage(result.image_url, 'paperhand-analysis.png');
+                    };
+
+                    // Add copy functionality
+                    copyBtn.onclick = function() {
+                        copyImageToClipboard(result.image_url);
+                    };
+
+                    resultContainer.classList.add('show');
+                } else {
+                    showError(result.error || 'Analysis failed');
+                }
+
+            } catch (err) {
+                console.error('Analysis error:', err);
+                showError('Failed to analyze address: ' + err.message);
+            } finally {
+                analyzeBtn.disabled = false;
+                loading.classList.remove('show');
+            }
+        }
+
+        // Add example address placeholder
+        document.getElementById('addressInput').placeholder = 'your polymarket wallet address here';
+
+        // Helper function to download image
+        function downloadImage(dataUrl, filename) {
+            try {
+                const link = document.createElement('a');
+                link.href = dataUrl; // Use data URL directly
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                // Show success message
+                const downloadBtn = document.getElementById('downloadBtn');
+                const originalText = downloadBtn.textContent;
+                downloadBtn.textContent = '✅ Downloaded!';
+                downloadBtn.disabled = true;
+
+                setTimeout(() => {
+                    downloadBtn.textContent = originalText;
+                    downloadBtn.disabled = false;
+                }, 2000);
+            } catch (error) {
+                console.error('Download failed:', error);
+                showError('Download failed. Try right-clicking and selecting "Save image".');
+            }
+        }
+
+        // Helper function to copy image to clipboard
+        async function copyImageToClipboard(dataUrl) {
+            try {
+                // Convert data URL to blob
+                const response = await fetch(dataUrl);
+                const blob = await response.blob();
+
+                // Create ClipboardItem with image blob
+                const clipboardItem = new ClipboardItem({
+                    'image/png': blob
+                });
+
+                // Write to clipboard
+                await navigator.clipboard.write([clipboardItem]);
+
+                // Show success message
+                const copyBtn = document.getElementById('copyBtn');
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = '✅ Image Copied!';
+                copyBtn.disabled = true;
+
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                    copyBtn.disabled = false;
+                }, 2000);
+            } catch (error) {
+                console.error('Copy failed:', error);
+
+                // Try alternative method for browsers that don't support ClipboardItem
+                try {
+                    // Create a canvas element
+                    const img = new Image();
+                    img.onload = async function() {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+
+                        // Convert canvas to blob
+                        canvas.toBlob(async function(blob) {
+                            try {
+                                const clipboardItem = new ClipboardItem({
+                                    'image/png': blob
+                                });
+                                await navigator.clipboard.write([clipboardItem]);
+
+                                // Show success message
+                                const copyBtn = document.getElementById('copyBtn');
+                                const originalText = copyBtn.textContent;
+                                copyBtn.textContent = '✅ Image Copied!';
+                                copyBtn.disabled = true;
+
+                                setTimeout(() => {
+                                    copyBtn.textContent = originalText;
+                                    copyBtn.disabled = false;
+                                }, 2000);
+                            } catch (clipboardError) {
+                                showError('Copy failed. Try downloading the image instead.');
+                            }
+                        }, 'image/png');
+                    };
+                    img.src = dataUrl;
+                } catch (altError) {
+                    console.error('Alternative method failed:', altError);
+                    showError('Copy failed. Try downloading the image instead.');
+                }
+            }
+        }
+
+        // Helper function to extract image URL from data URL
+        function imageUrlFromDataUrl(dataUrl) {
+            // If it's already a URL, return as is
+            if (dataUrl.startsWith('http')) {
+                return dataUrl;
+            }
+            // If it's a data URL, convert to blob URL
+            return dataUrl;
+        }
+    </script>
+</body>
+</html>
