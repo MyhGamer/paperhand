@@ -2,6 +2,10 @@
 
 A fun experimental project to analyze your "PaperHand" moments on Polymarket. It checks your trading history and calculates how much money you potentially lost by selling winning positions too early (before the market resolution).
 
+<img width="1022" height="1110" alt="image" src="https://github.com/user-attachments/assets/e4393c73-889c-485d-8d58-0f7b73534816" />
+
+
+
 ## 🚀 How to Run
 
 1.  **Install requirements**:
