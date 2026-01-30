@@ -43,3 +43,4 @@ This is a **fun/mini project** created for experimental purposes, and it has a s
 *   `index.html`: Simple frontend for user interaction.
 *   `markets_optimized.json`: The "heavy" local database of historical markets.
 *   `*.ttf / *.jpg / *.png`: Assets used to generate the shareable statistics cards.
+https://x.com/0xRacerAlt follow me lol
